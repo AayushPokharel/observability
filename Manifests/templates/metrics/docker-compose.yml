@@ -1,6 +1,7 @@
 services:
   gateway:
-    build: ../app
+    # build: ../app
+    image: aayushpokharel/observability-app:0.0.1
     environment:
       SERVICE_NAME: gateway
       UPSTREAM_URL: http://orders:8080
@@ -12,7 +13,8 @@ services:
     mem_limit: 256m
 
   orders:
-    build: ../app
+    # build: ../app
+    image: aayushpokharel/observability-app:0.0.1
     environment:
       SERVICE_NAME: orders
       UPSTREAM_URL: http://inventory:8080
@@ -22,7 +24,8 @@ services:
     mem_limit: 256m
 
   inventory:
-    build: ../app
+    # build: ../app
+    image: aayushpokharel/observability-app:0.0.1
     environment:
       SERVICE_NAME: inventory
       UPSTREAM_URL: http://inventory:8080
