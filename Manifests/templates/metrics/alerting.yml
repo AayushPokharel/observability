@@ -1,0 +1,17 @@
+groups:
+  - name: workshop-slos
+    interval: 15s
+    rules:
+      - alert: GatewayHighErrorRatio
+        expr: |
+          100 * sum(rate(app_http_requests_total{service="gateway",status=~"5.."}[2m]))
+          /
+          clamp_min(sum(rate(app_http_requests_total{service="gateway"}[2m])), 0.001)
+          > 5
+        for: 1m
+        labels:
+          severity: page
+          service: gateway
+        annotations:
+          summary: Gateway error ratio is above 5%
+          description: The gateway is consuming the workshop error budget too quickly.

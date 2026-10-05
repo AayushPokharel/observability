@@ -1,0 +1,64 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Traffic (requests/sec)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(rate(app_http_requests_total{service=~\"$service\"}[5m]))", "legendFormat": "{{service}}"}],
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Error ratio (%)",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "100 * sum(rate(app_http_requests_total{service=~\"$service\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(app_http_requests_total{service=~\"$service\"}[5m])), 0.001)", "legendFormat": "error %"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0}, "overrides": []}
+    },
+    {
+      "type": "timeseries",
+      "title": "P90 latency (seconds)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.90, sum by (le) (rate(app_http_request_duration_seconds_bucket{service=~\"$service\"}[5m])))", "legendFormat": "p90"}],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []}
+    },
+    {
+      "type": "timeseries",
+      "title": "In-flight requests",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(app_http_inflight_requests{service=~\"$service\"})", "legendFormat": "{{service}}"}],
+      "fieldConfig": {"defaults": {"unit": "short", "min": 0}, "overrides": []}
+    }
+  ],
+  "schemaVersion": 41,
+  "tags": ["observability", "slo", "workshop"],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "type": "query",
+        "label": "Service",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "definition": "label_values(app_http_requests_total, service)",
+        "query": "label_values(app_http_requests_total, service)",
+        "refresh": 1,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {"text": "All", "value": ["$__all"]}
+      }
+    ]
+  },
+  "time": {"from": "now-15m", "to": "now"},
+  "title": "SLO Overview",
+  "uid": "slo-overview",
+  "version": 1
+}

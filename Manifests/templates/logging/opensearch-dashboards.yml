@@ -1,0 +1,6 @@
+# Optional reference copy for the instructor.
+# The Compose environment variables are the source of truth for this workshop.
+server.host: "0.0.0.0"
+server.port: 5601
+opensearch.hosts: ["http://opensearch:9200"]
+opensearch_security.disabled: true

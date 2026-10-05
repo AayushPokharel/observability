@@ -1,0 +1,115 @@
+services:
+  gateway:
+    build: ../app
+    environment:
+      SERVICE_NAME: gateway
+      UPSTREAM_URL: http://orders:8080
+      LOG_LEVEL: INFO
+    ports:
+      - "8080:8080"
+    networks: [observe]
+    depends_on:
+      - fluent-bit
+    restart: unless-stopped
+    mem_limit: 256m
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: "127.0.0.1:24224"
+        tag: "__STUDENT__.gateway"
+        fluentd-async: "true"
+        fluentd-buffer-limit: "1m"
+
+  orders:
+    build: ../app
+    environment:
+      SERVICE_NAME: orders
+      UPSTREAM_URL: http://inventory:8080
+      LOG_LEVEL: INFO
+    networks: [observe]
+    depends_on:
+      - fluent-bit
+    restart: unless-stopped
+    mem_limit: 256m
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: "127.0.0.1:24224"
+        tag: "__STUDENT__.orders"
+        fluentd-async: "true"
+        fluentd-buffer-limit: "1m"
+
+  inventory:
+    build: ../app
+    environment:
+      SERVICE_NAME: inventory
+      UPSTREAM_URL: http://inventory:8080
+      LOG_LEVEL: INFO
+    networks: [observe]
+    depends_on:
+      - fluent-bit
+    restart: unless-stopped
+    mem_limit: 256m
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: "127.0.0.1:24224"
+        tag: "__STUDENT__.inventory"
+        fluentd-async: "true"
+        fluentd-buffer-limit: "1m"
+
+  fluent-bit:
+    image: fluent/fluent-bit:5.1.2
+    volumes:
+      - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./parsers.conf:/fluent-bit/etc/parsers.conf:ro
+    ports:
+      - "24224:24224"
+    networks: [observe]
+    depends_on:
+      - opensearch
+    restart: unless-stopped
+    mem_limit: 128m
+
+  opensearch:
+    image: opensearchproject/opensearch:3.9.0
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+      bootstrap.memory_lock: "true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+    networks: [observe]
+    restart: unless-stopped
+    mem_limit: 1g
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:3.9.0
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+    volumes:
+      - dashboards-data:/usr/share/opensearch-dashboards/data
+    ports:
+      - "5601:5601"
+    networks: [observe]
+    depends_on:
+      - opensearch
+    restart: unless-stopped
+    mem_limit: 512m
+
+networks:
+  observe:
+    name: __COMPOSE_PROJECT_NAME__-logging
+    driver: bridge
+
+volumes:
+  opensearch-data:
+  dashboards-data:

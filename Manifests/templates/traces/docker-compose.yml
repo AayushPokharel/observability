@@ -1,0 +1,82 @@
+services:
+  gateway:
+    build: ../app
+    environment:
+      SERVICE_NAME: gateway
+      UPSTREAM_URL: http://orders:8080
+      LOG_LEVEL: INFO
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: gateway
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=workshop
+    ports:
+      - "8080:8080"
+    networks: [observe]
+    depends_on:
+      - orders
+      - otel-collector
+    restart: unless-stopped
+    mem_limit: 256m
+
+  orders:
+    build: ../app
+    environment:
+      SERVICE_NAME: orders
+      UPSTREAM_URL: http://inventory:8080
+      LOG_LEVEL: INFO
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: orders
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=workshop
+    networks: [observe]
+    depends_on:
+      - inventory
+      - otel-collector
+    restart: unless-stopped
+    mem_limit: 256m
+
+  inventory:
+    build: ../app
+    environment:
+      SERVICE_NAME: inventory
+      UPSTREAM_URL: http://inventory:8080
+      LOG_LEVEL: INFO
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: inventory
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=workshop
+    networks: [observe]
+    depends_on:
+      - otel-collector
+    restart: unless-stopped
+    mem_limit: 256m
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.162.0
+    command:
+      - --config=/etc/otelcol/config.yaml
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    networks: [observe]
+    depends_on:
+      - jaeger
+    restart: unless-stopped
+    mem_limit: 256m
+
+  jaeger:
+    image: cr.jaegertracing.io/jaegertracing/jaeger:2.21.0
+    environment:
+      LOG_LEVEL: info
+    ports:
+      - "16686:16686"
+    networks: [observe]
+    restart: unless-stopped
+    mem_limit: 512m
+
+networks:
+  observe:
+    name: __COMPOSE_PROJECT_NAME__-traces
+    driver: bridge

@@ -1,0 +1,91 @@
+services:
+  gateway:
+    build: ../app
+    environment:
+      SERVICE_NAME: gateway
+      UPSTREAM_URL: http://orders:8080
+      LOG_LEVEL: INFO
+    ports:
+      - "8080:8080"
+    networks: [observe]
+    restart: unless-stopped
+    mem_limit: 256m
+
+  orders:
+    build: ../app
+    environment:
+      SERVICE_NAME: orders
+      UPSTREAM_URL: http://inventory:8080
+      LOG_LEVEL: INFO
+    networks: [observe]
+    restart: unless-stopped
+    mem_limit: 256m
+
+  inventory:
+    build: ../app
+    environment:
+      SERVICE_NAME: inventory
+      UPSTREAM_URL: http://inventory:8080
+      LOG_LEVEL: INFO
+    networks: [observe]
+    restart: unless-stopped
+    mem_limit: 256m
+
+  prometheus:
+    image: prom/prometheus:v3.9.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=2h
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./alerting.yml:/etc/prometheus/alerting.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks: [observe]
+    depends_on:
+      - gateway
+      - orders
+      - inventory
+    restart: unless-stopped
+    mem_limit: 512m
+
+  grafana:
+    image: grafana/grafana:13.0.9
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks: [observe]
+    depends_on:
+      - prometheus
+      - alert-receiver
+    restart: unless-stopped
+    mem_limit: 512m
+
+  alert-receiver:
+    image: mendhak/http-https-echo:42
+    environment:
+      HTTP_PORT: 8080
+      LOG_WITHOUT_REQUEST_BODY: "false"
+    networks: [observe]
+    restart: unless-stopped
+    mem_limit: 64m
+
+networks:
+  observe:
+    name: __COMPOSE_PROJECT_NAME__-metrics
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:
